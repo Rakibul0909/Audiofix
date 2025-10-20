@@ -1,0 +1,52 @@
+#!/bin/sh
+# Audiofix - start/stop a simple TCP audio module for PulseAudio
+# Usage: ./non start|stop
+
+pulseaudio --start > /dev/null 2>&1
+
+MODULE_NAME="module-simple-protocol-tcp"
+MODULE_ARGS="rate=48000 format=s16le channels=2 source=auto_null.monitor record=true port=1996"
+
+get_module_id() {
+  # returns module id if a matching module exists, else empty
+  pactl list short modules 2>/dev/null | grep "$MODULE_NAME" | awk '{print $1}' | head -n1
+}
+
+case "$1" in
+  start)
+    # Try to remove any existing module with same name first (safe)
+    EXISTING=$(get_module_id)
+    if [ -n "$EXISTING" ]; then
+      pactl unload-module "$EXISTING" >/dev/null 2>&1 && echo "✅ Previous audio TCP module (id $EXISTING) unloaded."
+    fi
+
+    # Load module and capture returned id (suppress other output)
+    NEW_ID=$(pactl load-module "$MODULE_NAME" $MODULE_ARGS 2>/dev/null)
+    # pactl prints the numeric module id on success
+    if printf '%s' "$NEW_ID" | grep -qE '^[0-9]+$'; then
+      echo "✅ Audio TCP module loaded (id $NEW_ID)."
+    else
+      echo "❌ Failed to load audio TCP module."
+      # optional verbose diagnostics:
+      pactl info | sed -n '1,6p'
+      exit 1
+    fi
+    ;;
+  stop)
+    MODULE_ID=$(get_module_id)
+    if [ -n "$MODULE_ID" ]; then
+      if pactl unload-module "$MODULE_ID" >/dev/null 2>&1; then
+        echo "✅ Audio TCP module unloaded (id $MODULE_ID)."
+      else
+        echo "❌ Unload failed for module id $MODULE_ID."
+        exit 1
+      fi
+    else
+      echo "⚠️ No audio TCP module found."
+    fi
+    ;;
+  *)
+    echo "Usage: $0 start|stop" >&2
+    exit 2
+    ;;
+esac
