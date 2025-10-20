@@ -1,33 +1,50 @@
 #!/bin/sh
 # Audiofix - start/stop a simple TCP audio module for PulseAudio
 # Usage: ./non start|stop
+# ----------- Color Codes -----------
+sleep 2
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+CYAN="\033[36m"
+MAGENTA="\033[35m"
+BOLD="\033[1m"
+RESET="\033[0m"
 
+# Start PulseAudio silently
 pulseaudio --start > /dev/null 2>&1
 
 MODULE_NAME="module-simple-protocol-tcp"
 MODULE_ARGS="rate=48000 format=s16le channels=2 source=auto_null.monitor record=true port=1996"
 
+# Function to get existing module id
 get_module_id() {
-  # returns module id if a matching module exists, else empty
   pactl list short modules 2>/dev/null | grep "$MODULE_NAME" | awk '{print $1}' | head -n1
 }
 
+# ----------- Banner -----------
+echo ""
+echo -e "${CYAN}${BOLD}<==============================================>${RESET}"
+echo -e "${MAGENTA}${BOLD}            Audiofix - TCP Audio Module       ${RESET}"
+echo -e "${GREEN}${BOLD}               Created by </> Rakibul       ${RESET}"
+echo -e "${CYAN}${BOLD}<==============================================>${RESET}"
+echo ""
+echo ""
+echo ""
 case "$1" in
   start)
-    # Try to remove any existing module with same name first (safe)
     EXISTING=$(get_module_id)
     if [ -n "$EXISTING" ]; then
-      pactl unload-module "$EXISTING" >/dev/null 2>&1 && echo "✅ Previous audio TCP module (id $EXISTING) unloaded."
+      pactl unload-module "$EXISTING" >/dev/null 2>&1 && \
+      echo -e "${YELLOW}[!] Previous audio TCP module (id $EXISTING) unloaded.${RESET}"
     fi
 
-    # Load module and capture returned id (suppress other output)
     NEW_ID=$(pactl load-module "$MODULE_NAME" $MODULE_ARGS 2>/dev/null)
-    # pactl prints the numeric module id on success
     if printf '%s' "$NEW_ID" | grep -qE '^[0-9]+$'; then
-      echo "✅ Audio TCP module loaded (id $NEW_ID)."
+      echo -e "${GREEN}${BOLD}[✓] Audio TCP module loaded successfully (id $NEW_ID)${RESET}"
     else
-      echo "❌ Failed to load audio TCP module."
-      # optional verbose diagnostics:
+      echo -e "${RED}${BOLD}[×] Failed to load audio TCP module${RESET}"
+      # Optional diagnostics
       pactl info | sed -n '1,6p'
       exit 1
     fi
@@ -36,18 +53,19 @@ case "$1" in
     MODULE_ID=$(get_module_id)
     if [ -n "$MODULE_ID" ]; then
       if pactl unload-module "$MODULE_ID" >/dev/null 2>&1; then
-        echo "✅ Audio TCP module unloaded (id $MODULE_ID)."
+        echo -e "${GREEN}${BOLD}[✓] Audio TCP module unloaded (id $MODULE_ID)${RESET}"
       else
-        echo "❌ Unload failed for module id $MODULE_ID."
+        echo -e "${RED}${BOLD}[×] Failed to unload module id $MODULE_ID${RESET}"
         exit 1
       fi
     else
-      echo "⚠️ No audio TCP module found."
+      echo -e "${YELLOW}${BOLD}[!] No audio TCP module found${RESET}"
     fi
     ;;
   *)
-    echo "Usage: $0 start|stop" >&2
+    echo -e "${RED}${BOLD}[×] Usage: $0 start|stop${RESET}" >&2
     exit 2
     ;;
 esac
-
+echo ""
+echo ""
