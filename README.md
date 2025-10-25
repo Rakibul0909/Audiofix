@@ -27,11 +27,11 @@ git clone https://github.com/Rakibul0909/Audiofix.git
 
 1. Start AudioFix:
    ```bash
-   bash Audiofix start
+   ./Audiofix start
    ```
 2. Stop AudioFix:
    ```bash
-   bash Audiofix stop
+   ./Audiofix stop
    ```
 ---
    
